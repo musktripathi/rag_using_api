@@ -1,5 +1,8 @@
-google-generativeai 
-langchain-community 
-sentence-transformers 
-faiss-cpu 
+streamlit
+google-generativeai
+langchain-community
+sentence-transformers
+faiss-cpu
 pypdf
+python-dotenv
+numpy
