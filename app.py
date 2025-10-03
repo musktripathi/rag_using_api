@@ -16,8 +16,6 @@ st.set_page_config(
 )
 
 # --- CSS for Custom Styling (Updated) ---
-# Sirf title ko center align karenge, baaki sab Streamlit par chhod denge
-# taaki Light/Dark mode sahi se kaam kare.
 st.markdown("""
 <style>
     h1 {
@@ -53,20 +51,19 @@ def create_vector_index(_pdf_bytes):
 
 # --- Main App Logic ---
 
-# Title
 st.title("Muskabhishek ke PDF Dost se Guftagoo 💬")
 st.write("---")
 
 # API Key Configuration using Streamlit Secrets
 try:
-    api_key = st.secrets["GEMINI_API_KEY"]
+    api_key = st.secrets["GEMINI_API"]
     genai.configure(api_key=api_key)
 except Exception:
     st.error("Gemini API Key configure nahi ho paayi. Kripya Streamlit Cloud ke settings mein 'GEMINI_API_KEY' secret add karein.")
     st.stop()
 
 # PDF File Uploader
-uploaded_file = st.file_uploader("Apna PDF file yahan upload karein 👇", type="pdf")
+uploaded_file = st.file_uploader("aug.pdf", type="pdf")
 st.write("---")
 
 if uploaded_file:
@@ -87,7 +84,10 @@ if uploaded_file:
                     k = 5
                     distances, indices = index.search(question_embedding_np, k)
                     context = " ".join([chunks[i] for i in indices[0]])
-                    gemini_model = genai.GenerativeModel('gemini-pro')
+                    
+                    # YAHAN BADLAAV KIYA GAYA HAI
+                    gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
+                    
                     prompt = f"""Aap ek expert document analyst hain. Diye gaye context ke आधार par sawal ka sateek aur saaranshit jawab dein.
                     Context:\n{context}\n\nQuestion:\n{question}\n\nAnswer:"""
                     response = gemini_model.generate_content(prompt)
