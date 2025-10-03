@@ -1,66 +1,101 @@
-# Zaruri libraries import karein
+import streamlit as st
 import os
 import faiss
 import google.generativeai as genai
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
-from google.colab import userdata
+import numpy as np
 
-# Apni Gemini API key ko Colab Secrets mein daalein
-# Key ka naam 'GEMINI_API_KEY' hona chahiye
-genai.configure(api_key=userdata.get("GEMINI_API"))
+# --- Page Configuration ---
+st.set_page_config(
+    page_title="PDF se Sawal-Jawab",
+    page_icon="📄",
+    layout="centered",
+    initial_sidebar_state="auto"
+)
 
-# Apni PDF file ko Colab mein upload karna mat bhulna
-file_path = "aug.pdf"
-loader = PyPDFLoader(file_path)
-documents = loader.load()
+# --- CSS for Custom Styling ---
+st.markdown("""
+<style>
+    .main { background-color: #f5f5f5; }
+    .stApp { background-color: #f5f5f5; }
+    .st-emotion-cache-1y4p8pa { max-width: 800px; }
+    h1 { color: #4a4a4a; text-align: center; }
+    .stTextInput > div > div > input { border: 2px solid #ccc; border-radius: 10px; }
+    .stButton > button { width: 100%; border-radius: 10px; border: 1px solid #007bff; background-color: #007bff; color: white; }
+</style>
+""", unsafe_allow_html=True)
 
-# Documents ko chunks mein vibhajit karein
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-docs = text_splitter.split_documents(documents)
+# --- Caching Functions ---
+@st.cache_resource
+def load_sbert_model():
+    return SentenceTransformer('all-MiniLM-L6-v2')
 
-# Chunks ko text mein badle
-chunks = [doc.page_content for doc in docs]
+model = load_sbert_model()
 
-# Embeddings banayein (S-BERT model se)
-model = SentenceTransformer('all-MiniLM-L6-v2')
-embeddings = model.encode(chunks)
+@st.cache_resource
+def create_vector_index(_pdf_bytes):
+    temp_file_path = "temp.pdf"
+    with open(temp_file_path, "wb") as f:
+        f.write(_pdf_bytes)
+    loader = PyPDFLoader(temp_file_path)
+    documents = loader.load()
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    docs = text_splitter.split_documents(documents)
+    chunks = [doc.page_content for doc in docs]
+    embeddings = model.encode(chunks)
+    dimension = embeddings.shape[1]
+    index = faiss.IndexFlatL2(dimension)
+    index.add(np.array(embeddings, dtype=np.float32))
+    os.remove(temp_file_path)
+    return index, chunks
 
-# FAISS index banayein
-dimension = embeddings.shape[1]
-index = faiss.IndexFlatL2(dimension)
-index.add(embeddings)
+# --- Main App Logic ---
 
-# Sawal-Jawab ka function
-def ask_gemini_with_rag(question):
-    # Sawal ki embedding banayein
-    question_embedding = model.encode([question])
+# Title
+st.title("Muskabhishek ke PDF Dost se Guftagoo 💬")
+st.write("---")
 
-    # FAISS index mein sabse milte-julte chunks dhoondhein
-    k = 3
-    distances, indices = index.search(question_embedding, k)
+# API Key Configuration using Streamlit Secrets
+try:
+    # Streamlit Cloud par deploy karne ke liye 'st.secrets' ka istemal karein
+    api_key = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=api_key)
+except Exception:
+    # Agar secrets mein key nahi milti hai toh error dikhayein
+    st.error("Gemini API Key configure nahi ho paayi. Kripya Streamlit Cloud ke settings mein 'GEMINI_API_KEY' secret add karein.")
+    st.stop() # App ko rok dein
 
-    # Context ke liye milte-julte chunks ko jod dein
-    context = ""
-    for i in indices[0]:
-        context += chunks[i] + " "
+# PDF File Uploader
+uploaded_file = st.file_uploader("aug.pdf", type="pdf")
+st.write("---")
 
-    # Gemini model ko load karein
-    gemini_model = genai.GenerativeModel('gemini-2.0-flash-001')
+if uploaded_file:
+    with st.spinner("PDF ko process kiya ja raha hai... कृपया प्रतीक्षा करें..."):
+        pdf_bytes = uploaded_file.getvalue()
+        index, chunks = create_vector_index(pdf_bytes)
+        st.success("PDF taiyaar hai! Ab aap sawal pooch sakte hain. 🎉")
 
-    # Prompt banayein
-    prompt = f"Given the following context, answer the question accurately and concisely.\n\nContext:\n{context}\n\nQuestion:\n{question}\n\nAnswer:"
+    st.header("Apne PDF se sawal poochein")
+    question = st.text_input("Sawal yahan likhein:", key="question_input")
 
-    # Gemini se jawab maangein
-    response = gemini_model.generate_content(prompt)
-
-    return response.text
-
-# Sawal poochein
-question = "hi"
-answer = ask_gemini_with_rag(question)
-
-print(f"Question: {question}")
-print("---")
-print(f"Answer: {answer}")
+    if st.button("Jawab Pata Karein"):
+        if question:
+            with st.spinner("Jawab dhoonda ja raha hai..."):
+                try:
+                    question_embedding = model.encode([question])
+                    question_embedding_np = np.array(question_embedding, dtype=np.float32)
+                    k = 5
+                    distances, indices = index.search(question_embedding_np, k)
+                    context = " ".join([chunks[i] for i in indices[0]])
+                    gemini_model = genai.GenerativeModel('gemini-pro')
+                    prompt = f"""Aap ek expert document analyst hain. Diye gaye context ke आधार par sawal ka sateek aur saaranshit jawab dein.
+                    Context:\n{context}\n\nQuestion:\n{question}\n\nAnswer:"""
+                    response = gemini_model.generate_content(prompt)
+                    st.subheader("Jawab:")
+                    st.markdown(f"> {response.text}")
+                except Exception as e:
+                    st.error(f"Jawab generate karne mein ek error aayi: {e}")
+        else:
+            st.warning("Kripya pehle ek sawal likhein.")
