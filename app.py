@@ -86,7 +86,7 @@ if uploaded_file:
                     context = " ".join([chunks[i] for i in indices[0]])
                     
                     # YAHAN BADLAAV KIYA GAYA HAI
-                    gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
+                    gemini_model = genai.GenerativeModel('gemini-2.0-flash-001')
                     
                     prompt = f"""Aap ek expert document analyst hain. Diye gaye context ke आधार par sawal ka sateek aur saaranshit jawab dein.
                     Context:\n{context}\n\nQuestion:\n{question}\n\nAnswer:"""
@@ -97,5 +97,6 @@ if uploaded_file:
                     st.error(f"Jawab generate karne mein ek error aayi: {e}")
         else:
             st.warning("Kripya pehle ek sawal likhein.")
+
 
 
