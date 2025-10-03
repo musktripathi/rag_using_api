@@ -56,7 +56,7 @@ st.write("---")
 
 # API Key Configuration using Streamlit Secrets
 try:
-    api_key = st.secrets["GEMINI_API"]
+    api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
 except Exception:
     st.error("Gemini API Key configure nahi ho paayi. Kripya Streamlit Cloud ke settings mein 'GEMINI_API_KEY' secret add karein.")
@@ -97,3 +97,4 @@ if uploaded_file:
                     st.error(f"Jawab generate karne mein ek error aayi: {e}")
         else:
             st.warning("Kripya pehle ek sawal likhein.")
+
