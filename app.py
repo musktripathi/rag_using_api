@@ -15,17 +15,17 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# --- CSS for Custom Styling ---
+# --- CSS for Custom Styling (Updated) ---
+# Sirf title ko center align karenge, baaki sab Streamlit par chhod denge
+# taaki Light/Dark mode sahi se kaam kare.
 st.markdown("""
 <style>
-    .main { background-color: #f5f5f5; }
-    .stApp { background-color: #f5f5f5; }
-    .st-emotion-cache-1y4p8pa { max-width: 800px; }
-    h1 { color: #4a4a4a; text-align: center; }
-    .stTextInput > div > div > input { border: 2px solid #ccc; border-radius: 10px; }
-    .stButton > button { width: 100%; border-radius: 10px; border: 1px solid #007bff; background-color: #007bff; color: white; }
+    h1 {
+        text-align: center;
+    }
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- Caching Functions ---
 @st.cache_resource
@@ -59,16 +59,14 @@ st.write("---")
 
 # API Key Configuration using Streamlit Secrets
 try:
-    # Streamlit Cloud par deploy karne ke liye 'st.secrets' ka istemal karein
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
 except Exception:
-    # Agar secrets mein key nahi milti hai toh error dikhayein
     st.error("Gemini API Key configure nahi ho paayi. Kripya Streamlit Cloud ke settings mein 'GEMINI_API_KEY' secret add karein.")
-    st.stop() # App ko rok dein
+    st.stop()
 
 # PDF File Uploader
-uploaded_file = st.file_uploader("aug.pdf", type="pdf")
+uploaded_file = st.file_uploader("Apna PDF file yahan upload karein 👇", type="pdf")
 st.write("---")
 
 if uploaded_file:
